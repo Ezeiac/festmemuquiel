@@ -49,15 +49,19 @@
                             lng: position.coords.longitude,
                         };
 
-                        initializeMovingMarker(userLocation);
+                        // Verificar si la ubicación obtenida es diferente de la predeterminada
+                        if (userLocation.lat !== myLocation.lat || userLocation.lng !== myLocation.lng) {
+                            initializeMovingMarker(userLocation);
+
+                            // Asegurarse de que ambos puntos sean visibles y ajustar el zoom
+                            fitMapToBounds(userLocation, myLocation);
+                        }
 
                         // Iniciar el proceso de movimiento con el desplazamiento de la página
                         window.addEventListener("scroll", function () {
                             updateMarkerPosition(userLocation, myLocation);
                         });
 
-                        // Asegurarse de que ambos puntos sean visibles y ajustar el zoom
-                        fitMapToBounds(userLocation, myLocation);
                     }, function() {
                         console.warn("Geolocalización fallida, usando ubicación predeterminada.");
                         initializeMovingMarker(myLocation);
