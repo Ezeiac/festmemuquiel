@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mi Proyecto Express con Google Maps</title>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDbSPdexQpHqf_c4wndWDy-tKt1IDW612o&v=beta&callback=initMap" async defer></script>
   <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 <body style="height: 2000px;">
@@ -12,10 +11,13 @@
         <div id="map"></div>
 
         <script>
-            function initMap() {
+            // Hacer que la función 'initMap' esté accesible globalmente
+            let map, movingMarker;
+
+            window.initMap = function() {
                 const myLocation = { lat: -31.17631200798497, lng: -64.31423951318813 };
 
-                const map = new google.maps.Map(document.getElementById("map"), {
+                map = new google.maps.Map(document.getElementById("map"), {
                     zoom: 3,
                     center: myLocation,
                     styles: pirateStyle,
@@ -27,7 +29,6 @@
                     mapTypeControl: false,
                     streetViewControl: false,
                     fullscreenControl: false,
-                    mapTypeControl: false,
                 });
 
                 const destinationMarker = new google.maps.Marker({
@@ -36,87 +37,74 @@
                     title: "Destino",
                 });
 
+                // Llamar a la función de geolocalización después de que el mapa esté listo
+                getUserLocation();
+            };
+
+            function getUserLocation() {
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(function (position) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
                         const userLocation = {
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
                         };
 
-                        const line = new google.maps.Polyline({
-                            path: [userLocation, myLocation],
-                            geodesic: false,
-                            strokeColor: "transparent",
-                            strokeOpacity: 1.0,
-                            strokeWeight: 2,
+                        initializeMovingMarker(userLocation);
+
+                        // Iniciar el proceso de movimiento con el desplazamiento de la página
+                        window.addEventListener("scroll", function () {
+                            updateMarkerPosition(userLocation, {lat: -31.17631200798497, lng: -64.31423951318813});
                         });
-                        line.setMap(map);
-
-                        const bounds = new google.maps.LatLngBounds();
-                        bounds.extend(userLocation);
-                        bounds.extend(myLocation);
-                        map.fitBounds(bounds);
-
-                        function calculateAngle(start, end) {
-                            const deltaY = end.lat - start.lat;
-                            const deltaX = end.lng - start.lng;
-                            let angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-                            return angle >= 0 ? angle : angle + 360;
-                        }
-
-                        const initialAngle = calculateAngle(userLocation, myLocation);
-
-                        const rotatingIcon = {
-                            path: "M21 16v-2l-8-5V4.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V18l-2 1.5V21l3-1 3 1v-1.5L13 18v-4.5l8 2.5z",
-                            fillColor: "blue",
-                            fillOpacity: 1,
-                            scale: 2,
-                            rotation: initialAngle,
-                            anchor: new google.maps.Point(12, 12),
-                            strokeWeight: 2,
-                        };
-
-                        const movingMarker = new google.maps.Marker({
-                            position: userLocation,
-                            map: map,
-                            icon: rotatingIcon,
-                            title: "Marcador en movimiento",
-                        });
-
-                        const path = line.getPath();
-
-                        function interpolate(start, end, fraction) {
-                            const lat = start.lat() + (end.lat() - start.lat()) * fraction;
-                            const lng = start.lng() + (end.lng() - start.lng()) * fraction;
-                            return new google.maps.LatLng(lat, lng);
-                        }
-
-                        function updateMarkerPosition() {
-                            const scrollPosition = window.scrollY;
-                            const maxScroll = document.body.scrollHeight - window.innerHeight;
-                            const progress = scrollPosition / maxScroll;
-
-                            const totalPoints = path.getLength();
-                            const segmentIndex = Math.floor(progress * (totalPoints - 1));
-                            const segmentProgress = (progress * (totalPoints - 1)) % 1;
-
-                            if (segmentIndex < totalPoints - 1) {
-                                const start = path.getAt(segmentIndex);
-                                const end = path.getAt(segmentIndex + 1);
-                                const interpolatedPosition = interpolate(start, end, segmentProgress);
-
-                                movingMarker.setPosition(interpolatedPosition);
-
-                                const angle = calculateAngle(start.toJSON(), end.toJSON());
-                                const icon = movingMarker.getIcon();
-                                icon.rotation = angle;
-                                movingMarker.setIcon(icon);
-                            }
-                        }
-
-                        window.addEventListener("scroll", updateMarkerPosition);
+                    }, function() {
+                        console.warn("Geolocalización fallida, usando ubicación predeterminada.");
+                        initializeMovingMarker({lat: -31.17631200798497, lng: -64.31423951318813});
                     });
+                } else {
+                    console.warn("Geolocalización no disponible, usando ubicación predeterminada.");
+                    initializeMovingMarker({lat: -31.17631200798497, lng: -64.31423951318813});
                 }
+            }
+
+            function initializeMovingMarker(location) {
+                movingMarker = new google.maps.Marker({
+                    position: location,
+                    map: map,
+                    title: "Ubicación del Usuario",
+                });
+
+                // Inicializar el marcador de movimiento
+                const rotatingIcon = {
+                    path: "M21 16v-2l-8-5V4.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V18l-2 1.5V21l3-1 3 1v-1.5L13 18v-4.5l8 2.5z",
+                    fillColor: "blue",
+                    fillOpacity: 1,
+                    scale: 2,
+                    rotation: 0, // Inicializar en 0 grados
+                    anchor: new google.maps.Point(12, 12),
+                    strokeWeight: 2,
+                };
+
+                movingMarker.setIcon(rotatingIcon);
+            }
+
+            function updateMarkerPosition(userLocation, myLocation) {
+                const progress = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+                const path = [userLocation, myLocation];
+
+                const segmentIndex = Math.floor(progress * (path.length - 1));
+                const segmentProgress = (progress * (path.length - 1)) % 1;
+
+                if (segmentIndex < path.length - 1) {
+                    const start = path[segmentIndex];
+                    const end = path[segmentIndex + 1];
+                    const interpolatedPosition = interpolate(start, end, segmentProgress);
+                    movingMarker.setPosition(interpolatedPosition);
+                }
+            }
+
+            function interpolate(start, end, fraction) {
+                const lat = start.lat + (end.lat - start.lat) * fraction;
+                const lng = start.lng + (end.lng - start.lng) * fraction;
+                return new google.maps.LatLng(lat, lng);
             }
 
             const pirateStyle = [
@@ -163,6 +151,9 @@
                 }
             ];
         </script>
+        
+        <!-- Cargar el script de Google Maps solo una vez -->
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDbSPdexQpHqf_c4wndWDy-tKt1IDW612o&v=beta&callback=initMap" async defer></script>
     </div>
 </body>
 </html>
