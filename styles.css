@@ -43,3 +43,7 @@ footer {
     z-index: 1;  /* Asegura que el contenido de la superposición esté por encima del mapa */
     height: 200vh;  /* Permite que la página tenga más altura para el scroll */
 }
+
+.gmnoprint {
+    display: none !important;
+}
