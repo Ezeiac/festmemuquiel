@@ -38,10 +38,10 @@
                 });
 
                 // Llamar a la función de geolocalización después de que el mapa esté listo
-                getUserLocation();
+                getUserLocation(myLocation);
             };
 
-            function getUserLocation() {
+            function getUserLocation(myLocation) {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(function(position) {
                         const userLocation = {
@@ -53,15 +53,24 @@
 
                         // Iniciar el proceso de movimiento con el desplazamiento de la página
                         window.addEventListener("scroll", function () {
-                            updateMarkerPosition(userLocation, {lat: -31.17631200798497, lng: -64.31423951318813});
+                            updateMarkerPosition(userLocation, myLocation);
                         });
+
+                        // Asegurarse de que ambos puntos sean visibles y ajustar el zoom
+                        fitMapToBounds(userLocation, myLocation);
                     }, function() {
                         console.warn("Geolocalización fallida, usando ubicación predeterminada.");
-                        initializeMovingMarker({lat: -31.17631200798497, lng: -64.31423951318813});
+                        initializeMovingMarker(myLocation);
+
+                        // Asegurarse de que ambos puntos sean visibles y ajustar el zoom
+                        fitMapToBounds(myLocation, myLocation);
                     });
                 } else {
                     console.warn("Geolocalización no disponible, usando ubicación predeterminada.");
-                    initializeMovingMarker({lat: -31.17631200798497, lng: -64.31423951318813});
+                    initializeMovingMarker(myLocation);
+
+                    // Asegurarse de que ambos puntos sean visibles y ajustar el zoom
+                    fitMapToBounds(myLocation, myLocation);
                 }
             }
 
@@ -105,6 +114,13 @@
                 const lat = start.lat + (end.lat - start.lat) * fraction;
                 const lng = start.lng + (end.lng - start.lng) * fraction;
                 return new google.maps.LatLng(lat, lng);
+            }
+
+            function fitMapToBounds(userLocation, myLocation) {
+                const bounds = new google.maps.LatLngBounds();
+                bounds.extend(userLocation);
+                bounds.extend(myLocation);
+                map.fitBounds(bounds);
             }
 
             const pirateStyle = [
